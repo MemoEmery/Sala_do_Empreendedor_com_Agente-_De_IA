@@ -1,0 +1,153 @@
+/* ============================================================
+   CHAT FAB — Sala do Empreendedor de Triunfo-PE
+   Botão flutuante de chat com IA (mascote "Careta de Triunfo")
+   ============================================================ */
+
+:root {
+  --chat-fab-blue-start: #005691;
+  --chat-fab-blue-end: #104077;
+  --chat-fab-gold: #FFC107;
+  --chat-fab-white: #FFFFFF;
+}
+
+.chat-fab {
+  /* posicionamento flutuante */
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+
+  /* layout interno: ícone à esquerda, texto à direita */
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+
+  /* formato de pílula expandida */
+  padding: 6px 22px 6px 6px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+
+  /* identidade visual Sebrae / Sala do Empreendedor */
+  background: linear-gradient(135deg, var(--chat-fab-blue-start) 0%, var(--chat-fab-blue-end) 100%);
+  box-shadow: 0 12px 32px rgba(0, 86, 145, 0.35);
+
+  /* flutuação contínua suave */
+  animation: chatFabFloat 3.2s ease-in-out infinite;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* hover: leve elevação + escala, e pausa a flutuação para não "brigar" com o movimento do mouse */
+.chat-fab:hover,
+.chat-fab:focus-visible {
+  animation-play-state: paused;
+  transform: translateY(-5px) scale(1.03);
+  box-shadow: 0 18px 42px rgba(0, 86, 145, 0.45);
+}
+
+.chat-fab:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+.chat-fab:focus-visible {
+  outline: 3px solid var(--chat-fab-gold);
+  outline-offset: 3px;
+}
+
+/* container circular do ícone (mascote) */
+.chat-fab__icon-wrap {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--chat-fab-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+
+  /* anel dourado sutil de destaque em volta do mascote */
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.55);
+}
+
+.chat-ia-avatar {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+
+/* bloco de texto */
+.chat-fab__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  text-align: left;
+  white-space: nowrap;
+  font-family: 'Nunito Sans', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  color: var(--chat-fab-white);
+}
+
+.chat-fab__text-line1 {
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.chat-fab__text-line2 {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* pequeno indicador dourado piscando, reforçando "algo novo" */
+.chat-fab__badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--chat-fab-gold);
+  border: 2px solid var(--chat-fab-white);
+}
+
+/* flutuação vertical contínua */
+@keyframes chatFabFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+/* respeita usuários que preferem menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  .chat-fab {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   MOBILE: vira um círculo perfeito, só com o ícone
+   ============================================================ */
+@media (max-width: 640px) {
+  .chat-fab {
+    width: 60px;
+    height: 60px;
+    padding: 0;
+    justify-content: center;
+    bottom: 20px;
+    right: 16px;
+  }
+
+  .chat-fab__text {
+    display: none;
+  }
+
+  .chat-fab__icon-wrap {
+    width: 60px;
+    height: 60px;
+  }
+
+  .chat-ia-avatar {
+    width: 42px;
+    height: 42px;
+  }
+}

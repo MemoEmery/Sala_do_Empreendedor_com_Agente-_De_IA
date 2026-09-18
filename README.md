@@ -48,7 +48,7 @@ Veja o passo a passo completo em [`README-deploy-chat.md`](./README-deploy-chat.
 1. Gerar uma chave gratuita no Google AI Studio (Gemini).
 2. Subir o projeto para o GitHub.
 3. Conectar o repositório na Vercel.
-4. Configurar a variável de ambiente `GEMINI_API_KEY` na Vercel.
+4. Configurar a variável de ambiente na Vercel.
 5. Deploy.
 
 ## Tecnologias

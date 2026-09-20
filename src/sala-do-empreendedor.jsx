@@ -1158,6 +1158,43 @@ function Footer({ onSelectCategory, onNav }) {
 /*  CHAT COM IA — assistente virtual da Sala do Empreendedor           */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/*  CNPJ — deteccao e validacao (algoritmo oficial dos digitos verif.) */
+/* ------------------------------------------------------------------ */
+
+const CNPJ_REGEX = /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/;
+
+function extractCNPJCandidate(text) {
+  const match = String(text).match(CNPJ_REGEX);
+  return match ? match[0] : null;
+}
+
+function isValidCNPJ(raw) {
+  const cnpj = String(raw).replace(/[^\d]/g, "");
+  if (cnpj.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(cnpj)) return false; // todos os digitos iguais
+
+  const calcCheckDigit = (base) => {
+    let sum = 0;
+    let pos = base.length - 7;
+    for (let i = base.length; i >= 1; i--) {
+      sum += Number(base.charAt(base.length - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    const result = sum % 11;
+    return result < 2 ? 0 : 11 - result;
+  };
+
+  const digits = cnpj.substring(12);
+  const firstCheck = calcCheckDigit(cnpj.substring(0, 12));
+  if (firstCheck !== Number(digits.charAt(0))) return false;
+
+  const secondCheck = calcCheckDigit(cnpj.substring(0, 13));
+  if (secondCheck !== Number(digits.charAt(1))) return false;
+
+  return true;
+}
+
 function linkify(text) {
   // primeiro separa URLs, depois trata **negrito** dentro de cada trecho de texto
   const urlParts = String(text).split(/(https?:\/\/[^\s)]+)/g);
@@ -1208,6 +1245,7 @@ function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const scrollRef = useRef(null);
+  const cnpjRegistradoRef = useRef(false);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -1237,6 +1275,7 @@ Regras importantes:
 - Recomende no máximo 3 cursos por resposta, priorizando os mais relevantes para o que a pessoa descreveu.
 - Se nenhum curso da lista atender exatamente à necessidade, seja honesto e sugira o mais próximo disponível.
 - Mantenha as respostas curtas (idealmente até 120 palavras), como uma conversa de chat.
+- Depois de ajudar a pessoa (recomendar cursos ou tirar uma dúvida), você pode, no máximo uma vez por conversa, perguntar de forma natural e não insistente se ela gostaria de registrar esse atendimento, pedindo o CNPJ da empresa. Nunca peça outros dados pessoais. Se a pessoa não quiser ou ignorar, não insista de novo.
 
 Lista completa dos 37 cursos disponíveis (título, categoria e link):
 ${coursesContext}`,
@@ -1290,6 +1329,46 @@ ${coursesContext}`,
             "Desculpe, não consegui gerar uma resposta agora. Pode tentar reformular a pergunta?",
         },
       ]);
+
+      // Verifica se a pessoa informou um CNPJ nessa mensagem e ainda
+      // não registramos nenhum atendimento nesta conversa
+      if (!cnpjRegistradoRef.current) {
+        const candidate = extractCNPJCandidate(text);
+        if (candidate && isValidCNPJ(candidate)) {
+          cnpjRegistradoRef.current = true;
+          try {
+            const sfRes = await fetch("/api/collect-cnpj", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ cnpj: candidate }),
+            });
+            const sfData = await sfRes.json();
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `sys-${Date.now()}`,
+                role: "assistant",
+                content: sfRes.ok
+                  ? "✅ Prontinho — registrei esse atendimento por aqui, com o CNPJ informado."
+                  : `Não consegui registrar o atendimento agora (${
+                      sfData?.error || "erro desconhecido"
+                    }). Pode tentar de novo mais tarde.`,
+              },
+            ]);
+          } catch (e) {
+            cnpjRegistradoRef.current = false;
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `sys-${Date.now()}`,
+                role: "assistant",
+                content:
+                  "Não consegui registrar o atendimento agora. Pode tentar de novo mais tarde.",
+              },
+            ]);
+          }
+        }
+      }
     } catch (err) {
       setErrorMsg(
         err?.message ||

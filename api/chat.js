@@ -34,26 +34,36 @@ export default async function handler(req, res) {
       parts: [{ text: String(m.content || "") }],
     }));
 
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
-        body: JSON.stringify({
-          contents,
-          ...(system
-            ? { systemInstruction: { parts: [{ text: system }] } }
-            : {}),
-          generationConfig: {
-            maxOutputTokens: 1000,
-            thinkingConfig: { thinkingBudget: 0 },
+    const body = JSON.stringify({
+      contents,
+      ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+      generationConfig: {
+        maxOutputTokens: 1000,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    });
+
+    const callGemini = () =>
+      fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
           },
-        }),
-      }
-    );
+          body,
+        }
+      );
+
+    let geminiResponse = await callGemini();
+
+    // Erro 503 = modelo sobrecarregado do lado do Google (costuma ser
+    // rapidamente passageiro) - tenta de novo automaticamente uma vez
+    if (geminiResponse.status === 503) {
+      await new Promise((r) => setTimeout(r, 1500));
+      geminiResponse = await callGemini();
+    }
 
     const data = await geminiResponse.json();
 
@@ -65,6 +75,14 @@ export default async function handler(req, res) {
         return res.status(429).json({
           error:
             "Estamos com bastante gente conversando agora 🙂 Aguarde alguns segundos e tente de novo.",
+        });
+      }
+
+      // Erro 503 = modelo sobrecarregado no Google (mesmo após a nova tentativa)
+      if (geminiResponse.status === 503) {
+        return res.status(503).json({
+          error:
+            "A IA está com alta demanda no momento 🙂 É passageiro — tente de novo em alguns instantes.",
         });
       }
 
